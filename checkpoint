@@ -1,0 +1,2 @@
+model_checkpoint_path: "/home/adrien/workspace/DeepNet/mitos12ClfFromConvAutoEncoder3.ckpt"
+all_model_checkpoint_paths: "/home/adrien/workspace/DeepNet/mitos12ClfFromConvAutoEncoder3.ckpt"

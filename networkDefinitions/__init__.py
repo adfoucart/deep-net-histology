@@ -1,0 +1,5 @@
+from mnistFullyConnectedClassif import mnistFullyConnectedClassif
+from mitos12ConvAutoEncoder3 import mitos12ConvAutoEncoder3,mitos12ClassifierFromConvAutoEncoder3
+from jphConvAutoEncoder import jphConvAutoEncoder
+from mitos12AutoEncoderTrainedByLayers import mitos12AutoEncoderTrainedByLayers
+from mitos12FullyConnectedAE import mitos12FullyConnectedAE, visuNetwork
