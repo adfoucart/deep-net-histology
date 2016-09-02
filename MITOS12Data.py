@@ -5,6 +5,8 @@ import os
 from DataSource import DataSource
 import csv
 from random import shuffle
+from skimage.measure import label, regionprops
+from deformer import Deformer
 
 class MITOS12Data(DataSource):
 	def __init__(self, **kwargs):
@@ -12,6 +14,7 @@ class MITOS12Data(DataSource):
 		self.train_dirs = kwargs['train_dirs'] if 'train_dirs' in kwargs else []
 		self.chunksize = kwargs['chunksize'] if 'chunksize' in kwargs else (64,64)
 		self.eval_dirs = kwargs['eval_dirs'] if 'eval_dirs' in kwargs else []
+		self.resizeTo = kwargs['resizeTo'] if 'resizeTo' in kwargs else self.chunksize
 
 		files = [ (d,os.listdir(d)) for d in self.train_dirs ]
 
@@ -27,51 +30,56 @@ class MITOS12Data(DataSource):
 		i = np.random.randint(len(self.images))
 		return self.images[i][0]
 
+	def batchFromChunks(self, im, chunks, flat, deformer):
+		if flat :
+			return [(deformer.apply(im.crop(chunk[0])).flatten().astype(np.float32)/255., chunk[1]) for i,chunk in enumerate(chunks)]
+		else:
+			return [(deformer.apply(im.crop(chunk[0])).astype(np.float32)/255., chunk[1]) for i,chunk in enumerate(chunks)]
+
 	def getMitosisImages(self, n, **kwargs):
 		assert self.initialized == True, "Data Source not initialized"
 
 		flat = 'flat' in kwargs and kwargs['flat'] is True
+		deformer = kwargs['deformer'] if 'deformer' in kwargs else Deformer()
 
 		selected_image = np.random.randint(len(self.images))
-		supervision = self.get_image_supervision(self.images[selected_image][2]+"_supervision.csv")
-		# mitosis = self.get_supervision(self.images[selected_image][2]+".csv")
-		# bboxes = self.get_boundingboxes(self.images[selected_image][2]+"_bboxes.csv")
+		supervision = self.get_image_supervision("%s_supervision_%d.csv"%(self.images[selected_image][2],self.chunksize[0]))
 
 		im = self.images[selected_image][0]
-		im_control = Image.open(self.images[selected_image][2]+".jpg")
 		
 		chunks = []
 		for s in supervision:
-			if( s[2] == True ):
-				chunks.append([s[0], s[1]])
+			if( float(s[2]) > 0. ):
+				chunks.append([(s[0], s[1], s[0]+self.chunksize[0], s[1]+self.chunksize[1]), [s[2], 1-s[2]]])
 		shuffle(chunks)
 
-		if flat :
-			return [np.asarray(im.crop((chunk[0], chunk[1], chunk[0]+self.chunksize[0], chunk[1]+self.chunksize[1]))).flatten().astype(np.float32)/255. for i,chunk in enumerate(chunks) if i < n]
-		else:
-			return [np.asarray(im.crop((chunk[0], chunk[1], chunk[0]+self.chunksize[0], chunk[1]+self.chunksize[1]))).astype(np.float32)/255. for i,chunk in enumerate(chunks) if i < n]
+		return self.batchFromChunks(im, chunks[:n], flat, deformer)
 
 	def next_supervised_batch(self, n, **kwargs):
 		assert self.initialized == True, "Data Source not initialized"
 
 		flat = 'flat' in kwargs and kwargs['flat'] is True
+		pMitosis = kwargs['pMitosis'] if 'pMitosis' in kwargs else 0.5
+		noise = 'noise' in kwargs and kwargs['noise'] is True
+		nc = kwargs['nc'] if 'nc' in kwargs else 0.05
+		deformer = Deformer(nc=nc, flip=True, rot=True, resizeTo=self.resizeTo)
 
 		# Get n/2 mitosis
-		m_images = self.getMitosisImages(n/2, flat=flat)
-		batch = [(im,[1,0]) for im in m_images]
-
-		selected_image = np.random.randint(len(self.images))
-		chunks = np.random.random((2,n-n/2))
-
-		im = self.images[selected_image][0]
-		chunks[0,:] *= im.size[0] - self.chunksize[0]
-		chunks[1,:] *= im.size[1] - self.chunksize[1]
-		chunks = np.round(chunks).astype('uint16')
-		if flat :
-			batch += [(np.asarray(im.crop((chunk[0], chunk[1], chunk[0]+self.chunksize[0], chunk[1]+self.chunksize[1]))).flatten().astype(np.float32)/255., [0,1]) for chunk in zip(chunks[0,:],chunks[1,:])]
-		else:
-			batch += [(np.asarray(im.crop((chunk[0], chunk[1], chunk[0]+self.chunksize[0], chunk[1]+self.chunksize[1]))).astype(np.float32)/255., [0,1]) for chunk in zip(chunks[0,:],chunks[1,:])]
+		batch = self.getMitosisImages(int(n*pMitosis), deformer=deformer)
+		# batch = [(im[0],[im[1],1-im[1]]) for im in m_images]
+		m = n-int(n*pMitosis)
 		
+		selected_image = np.random.randint(len(self.images))
+		im = self.images[selected_image][0]
+		
+		chunksCoord = np.random.random((m,2))
+		chunksCoord[:,0] *= im.size[0] - self.chunksize[0]
+		chunksCoord[:,1] *= im.size[1] - self.chunksize[1]
+		chunksCoord = np.round(chunksCoord).astype('uint16')
+		chunks = [[(chunk[0], chunk[1], chunk[0]+self.chunksize[0], chunk[1]+self.chunksize[1]), [0., 1.]] for chunk in chunksCoord]
+
+		batch += self.batchFromChunks(im, chunks, flat, deformer)
+
 		shuffle(batch)
 		return batch
 
@@ -79,19 +87,20 @@ class MITOS12Data(DataSource):
 		assert self.initialized == True, "Data Source not initialized"
 
 		flat = 'flat' in kwargs and kwargs['flat'] is True
+		noise = 'noise' in kwargs and kwargs['noise'] is True
+		nc = kwargs['nc'] if 'nc' in kwargs else 0.05
+		deformer = Deformer(nc=nc, flip=True, rot=True, resizeTo=self.resizeTo)
 
 		selected_image = np.random.randint(len(self.images))
-		chunks = np.random.random((2,n))
-
 		im = self.images[selected_image][0]
-		chunks[0,:] *= im.size[0] - self.chunksize[0]
-		chunks[1,:] *= im.size[1] - self.chunksize[1]
-		chunks = np.round(chunks).astype('uint16')
-		if flat :
-			return [np.asarray(im.crop((chunk[0], chunk[1], chunk[0]+self.chunksize[0], chunk[1]+self.chunksize[1]))).flatten().astype(np.float32)/255. for chunk in zip(chunks[0,:],chunks[1,:])]
-		else:
-			return [np.asarray(im.crop((chunk[0], chunk[1], chunk[0]+self.chunksize[0], chunk[1]+self.chunksize[1]))).astype(np.float32)/255. for chunk in zip(chunks[0,:],chunks[1,:])]
-		#return [im.crop((chunk[0], chunk[1], self.chunksize[0], self.chunksize[1])) for chunk in zip(chunks[0,:],chunks[1,:])]
+
+		chunksCoord = np.random.random((n,2))
+		chunksCoord[:,0] *= im.size[0] - self.chunksize[0]
+		chunksCoord[:,1] *= im.size[1] - self.chunksize[1]
+		chunksCoord = np.round(chunksCoord).astype('uint16')
+		chunks = [[(chunk[0], chunk[1], chunk[0]+self.chunksize[0], chunk[1]+self.chunksize[1]), None] for chunk in chunksCoord]
+
+		return self.batchFromChunks(im, chunks, flat, deformer)
 
 	def get_inputshape(self):
 		return [64,64,3]
@@ -120,7 +129,7 @@ class MITOS12Data(DataSource):
 		with open(fname, 'rb') as csvfile:
 			reader = csv.reader(csvfile, delimiter=',')
 			for row in reader:
-				supervision.append([int(row[0]),int(row[1]),row[2]=="True"])
+				supervision.append([int(row[0]),int(row[1]),float(row[2])])
 		return supervision
 
 	def createFullTrainingSet(self):
@@ -136,21 +145,42 @@ class MITOS12Data(DataSource):
 			for xs,ys in mitosis:
 				for i in range(len(xs)):
 					im_mitosis[ys[i],xs[i]] = 1
+
+			labeled = label(im_mitosis)
+			props = regionprops(labeled)
+			#areas = [(labeled==i+1).sum() for i in range(labeled.max())]
+			pMitosis = np.zeros(im_mitosis.shape).astype('float')
+			for p in props:
+				bb = p['bbox']
+				ar = p['area']
+				for x in range(max(bb[1]-self.chunksize[0],0),min(bb[3], im.shape[0])):
+					for y in range(max(bb[0]-self.chunksize[1],0), min(bb[2], im.shape[1])):
+						pMitosis[y,x] = max(pMitosis[y,x],(labeled[y:y+self.chunksize[1],x:x+self.chunksize[0]]==p['label']).sum()*1./ar)
+
+			# plt.figure()
+			# plt.imshow(labeled)
+			# plt.figure()
+			# plt.imshow(pMitosis)
+			# plt.show()
+			# break
 			
 			rangex = np.arange(0,im.shape[0]-self.chunksize[0],stride)
 			rangey = np.arange(0,im.shape[1]-self.chunksize[1],stride)
 			ts = [(t/len(rangey), t%len(rangey)) for t in range(len(rangex)*len(rangey))]
 			chunks = [[tx*stride,ty*stride] for tx,ty in ts]
-			isMitosis = [im_mitosis[y:y+self.chunksize[1],x:x+self.chunksize[0]].sum() > 100 for x,y in chunks]
+			
+			#isMitosis = [im_mitosis[y:y+self.chunksize[1],x:x+self.chunksize[0]].sum() > 100 for x,y in chunks]
 
-			with open(cur[2]+"_supervision.csv", "wb") as csvfile:
+			with open("%s_supervision_%d.csv"%(cur[2],self.chunksize[0]), "wb") as csvfile:
 				print cur[2]
 				writer = csv.writer(csvfile, delimiter=',')
 				for i,c in enumerate(chunks):
 					x = c[0]
 					y = c[1]
+					p = pMitosis[y,x]
+					writer.writerow([x, y, p])
 					#pixels = list(im[y:y+self.chunksize[1],x:x+self.chunksize[0]].flatten())
-					writer.writerow([x, y, isMitosis[i]])
+					#writer.writerow([x, y, isMitosis[i]])
 
 	def get_evaluation_set(self, **kwargs):
 		files = [ (d,os.listdir(d)) for d in self.eval_dirs ]
@@ -218,8 +248,8 @@ class MITOS12Data(DataSource):
 
 # 	return bboxes
 
-#basedir = "/media/sf_E_DRIVE/Dropbox/ULB/Doctorat/ImageSet/MITOS12/"
-#dirs = [os.path.join(basedir,d) for d in ["A00_v2", "A01_v2", "A02_v2", "A03_v2", "A04_v2"]]
+# basedir = "/media/sf_E_DRIVE/Dropbox/ULB/Doctorat/ImageSet/MITOS12/"
+# dirs = [os.path.join(basedir,d) for d in ["A00_v2", "A01_v2", "A02_v2", "A03_v2", "A04_v2"]]
 
 # getAllBoundingBoxes(dirs)
 
@@ -235,7 +265,20 @@ class MITOS12Data(DataSource):
 # bboxes = getBoundingBoxesFromCoordinates(mitosis, output)
 # print bboxes
 
-# mitos12 = MITOS12Data(train_dirs=dirs)
+# mitos12 = MITOS12Data(train_dirs=dirs, chunksize=(128,128))
+# batch = mitos12.next_batch(4, noise=True, nc=0.03)
+
+# print batch[0]
+
+# plt.figure()
+# plt.imshow(batch[0][0])
+# plt.show()
 # mitos12.createFullTrainingSet()
 # mitosis = mitos12.getMitosisImages()
 # print mitosis
+
+
+# basedir = "/media/sf_E_DRIVE/Dropbox/ULB/Doctorat/ImageSet/MITOS12/"
+# dirs = [os.path.join(basedir,d) for d in ["A00_v2", "A01_v2", "A02_v2", "A03_v2", "A04_v2"]]
+# mitos12 = MITOS12Data(train_dirs=dirs, chunksize=(128,128))
+# mitos12.createFullTrainingSet()

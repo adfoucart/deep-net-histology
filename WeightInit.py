@@ -11,6 +11,6 @@ class WeightInit:
         return tf.Variable(tf.zeros(shape))
 
     @staticmethod
-    def positive(shape, bias=0.1):
+    def positive(shape, bias=0.):
         initial = tf.constant(bias, shape=shape)
         return tf.Variable(initial)

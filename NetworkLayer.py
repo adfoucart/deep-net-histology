@@ -39,7 +39,7 @@ class FullyConnectedLayer(Layer):
         self.W = self.vars['weightInitFunc']([self.vars['inputsize'], self.vars['outputsize']])
         self.b = self.vars['biasInitFunc']([self.vars['outputsize']])
         tf.add_to_collection('l2losses', tf.nn.l2_loss(self.W))
-        tf.add_to_collection('l2losses', tf.nn.l2_loss(self.b))
+        # tf.add_to_collection('l2losses', tf.nn.l2_loss(self.b))
         self.invertedBy = InvertedLayer
         self.trainables = [self.W, self.b]
     def link(self, x):
@@ -59,7 +59,7 @@ class ConvolutionLayer(Layer):
         self.W = self.vars['weightInitFunc']([self.vars['kernelsize'],self.vars['kernelsize'],self.vars['channels'],self.vars['features']])
         self.b = self.vars['biasInitFunc']([self.vars['features']])
         tf.add_to_collection('l2losses', tf.nn.l2_loss(self.W))
-        tf.add_to_collection('l2losses', tf.nn.l2_loss(self.b))
+        # tf.add_to_collection('l2losses', tf.nn.l2_loss(self.b))
         self.invertedBy = DeconvolutionLayer
         self.trainables = [self.W, self.b]
     def link(self, x):

@@ -49,19 +49,25 @@ class Network():
                 print curx
             self.y = curx
 
-    def setupTraining(self, costFunction="cross-entropy", optimizer="Adam", wd=True, trainVars=None):
+    def setupTraining(self, costFunction="cross-entropy", optimizer="Adam", wd=True, trainVars=None, **kwargs):
         self.target = tf.placeholder(tf.float32, self.y.get_shape(), "Target")
+
+        a = kwargs["a"] if "a" in kwargs else 0.99
+        lr = kwargs["lr"] if "lr" in kwargs else 1e-4
 
         if costFunction == "cross-entropy":
             self.loss = -tf.reduce_sum(self.target*tf.log(self.y))
         elif costFunction == "squared-diff":
-            self.loss = tf.reduce_sum(tf.square(self.target-self.y))
+            self.loss = tf.reduce_mean(tf.square(self.target-self.y))
 
         if wd == True:
-            self.l2loss = tf.add_n(tf.get_collection('l2losses'))
-            self.cost = tf.add(self.loss, self.l2loss)
+            # a = 0.99
+            l2loss = tf.get_collection('l2losses')
+            self.l2loss = tf.add_n(l2loss)/len(l2loss)
+            self.cost = a*self.loss+(1-a)*self.l2loss
         else:
             self.cost = self.loss
+            self.l2loss = tf.constant(0.)
 
         varsToTrain = []
         if trainVars == None :
@@ -71,9 +77,9 @@ class Network():
             varsToTrain = trainVars
 
         if optimizer == "Adam":
-            self.trainingStep = tf.train.AdamOptimizer(1e-4).minimize(self.cost, var_list=varsToTrain)
+            self.trainingStep = tf.train.AdamOptimizer(lr).minimize(self.cost, var_list=varsToTrain)
         elif optimizer == "GradientDescent":
-            self.trainingStep = tf.train.GradientDescentOptimizer(0.01).minimize(self.cost, var_list=varsToTrain)
+            self.trainingStep = tf.train.GradientDescentOptimizer(lr).minimize(self.cost, var_list=varsToTrain)
         
         if(self.objective == 'classification' ):
             self.correct_prediction = tf.equal(tf.argmax(self.y,1), tf.argmax(self.target,1))
@@ -105,7 +111,8 @@ class Network():
         return self.encoded.eval(feed_dict={self.x: x})
 
     def decode(self, x):
-        encoded = tf.placeholder(tf.float32, [1, self.encoded.get_shape()[1], self.encoded.get_shape()[2], self.encoded.get_shape()[3]])
+        encoded = tf.placeholder(tf.float32, [1] + [k for k in self.encoded.get_shape()[1:]])
+        #encoded = tf.placeholder(tf.float32, [1, self.encoded.get_shape()[1], self.encoded.get_shape()[2], self.encoded.get_shape()[3]])
 
         curx = encoded
         for i in range(len(self.layers)-1):

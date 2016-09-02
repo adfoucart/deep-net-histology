@@ -11,11 +11,14 @@ from WeightInit import WeightInit
 
 from Network import Network
 
-from networkDefinitions import mnistFullyConnectedClassif, mitos12ConvAutoEncoder3, jphConvAutoEncoder, mitos12AutoEncoderTrainedByLayers, mitos12FullyConnectedAE, mitos12ClassifierFromConvAutoEncoder3
+from networkDefinitions import *
 
 # mnistFullyConnectedClassif(False)
-mitos12ConvAutoEncoder3(False, False, 10000)
-# mitos12ClassifierFromConvAutoEncoder3(True, True, 50000)
+#mnistSimpleClassif(True)
+#mitos12ConvAutoEncoder3(False, False, 20000)
+#mitos12ClassifierFromConvAutoEncoder3(False, False, 50000)
+# mitos12ConvAutoEncoder4(True, True, 20000)
+mitos12ClassifierFromConvAutoEncoder4(True, True, 20000)
 # jphConvAutoEncoder(True, True)
 # mitos12AutoEncoderTrainedByLayers(False, 2, True, 0)
 # mitos12FullyConnectedAE(False, True, 10000)
