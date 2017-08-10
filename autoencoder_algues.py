@@ -125,9 +125,9 @@ batch_size = 100
 net.setupTraining(batch_size, train_level-1)
 
 tf.initialize_all_variables().run()
-for i in range(train_level):
-    if os.path.isfile("/home/adrien/workspace/DeepNet/%s.ckpt"%clf_names[i]):
-        savers[i].restore(sess, "/home/adrien/workspace/DeepNet/%s.ckpt"%clf_names[i])
+# for i in range(train_level):
+#     if os.path.isfile("/home/adrien/workspace/DeepNet/%s.ckpt"%clf_names[i]):
+#         savers[i].restore(sess, "/home/adrien/workspace/DeepNet/%s.ckpt"%clf_names[i])
 
 # saver_1.restore(sess, "/home/adrien/workspace/DeepNet/%s.ckpt"%clf_name_1)
 # saver_2.restore(sess, "/home/adrien/workspace/DeepNet/%s.ckpt"%clf_name_2)
@@ -135,7 +135,7 @@ for i in range(train_level):
 # saver_4.restore(sess, "/home/adrien/workspace/DeepNet/%s.ckpt"%clf_name_4)
 
 print "Start training sequence"
-for i in range(10000):
+for i in range(20001):
     # batch = data.next_batch(batch_size, noise=True, nc=0.02)
     # net.train(batch, batch)
 
