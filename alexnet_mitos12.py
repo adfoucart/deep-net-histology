@@ -106,8 +106,8 @@ class AlexNet:
         self.output = softmax
 
         # Setup Training
-        self.train_W = [fc6W, fc5W, conv4W, conv3W]
-        self.train_b = [fc6b, fc5b, conv4b, conv3b]
+        self.train_W = [fc6W, fc5W, conv4W, conv3W, conv2W]
+        self.train_b = [fc6b, fc5b, conv4b, conv3b, conv2b]
         self.train_vars = self.train_W+self.train_b
         self.target = tf.placeholder(tf.float32, [batch_size, 2])
 
@@ -134,7 +134,7 @@ def train():
     clf_name = "Mitos12_AlexNet_cut4"
     feed = MITOS12Feed()
     sess = tf.InteractiveSession()
-    batch_size = 200
+    batch_size = 20
     tile_size = (127,127)
     lr = 1e-3
     eps = 0.1
@@ -142,6 +142,7 @@ def train():
     net = AlexNet(batch_size, tile_size, sess, lr, eps, a)
     saver = tf.train.Saver(net.train_vars)
     best_score = 50.
+    restore_from = "./Mitos12_AlexNet_cut4_201701170859_last.ckpt"
 
     now = datetime.now().strftime("%Y%m%d%H%M")
     clf_date_name = '%s_%s'%(clf_name, now)
@@ -154,13 +155,13 @@ def train():
                     'lr': lr,
                     'eps': eps,
                     'a': a,
-                    'continuing_from_previous_run': False,
-                    # 'restored_clf': "AlexNet_4ft_1mp_2fc_1softmax_cells_only_201610281112_last.ckpt",
+                    'continuing_from_previous_run': True,
+                    'restored_clf': restore_from,
                     'Date': now}
         json.dump(run_info, logfile, indent=4)
         logfile.write("\n")
 
-    # saver.restore(sess, "AlexNet_4ft_1mp_2fc_1softmax_cells_only_201610281112_last.ckpt")
+    # saver.restore(sess, restore_from)
     # if(os.path.isdir('weights/%s'%clf_date_name) == False):
     #     os.mkdir('weights/%s'%clf_date_name)
 
@@ -206,27 +207,97 @@ def test():
     net = AlexNet(batch_size, tile_size, sess, lr, eps, a)
     saver = tf.train.Saver(net.train_vars)
 
-    saver.restore(sess, "./Mitos12_AlexNet_cut4_201701051734_best.ckpt")
+    saver.restore(sess, "./Mitos12_AlexNet_cut4_201701171424_best.ckpt")
 
     conf_mat = np.zeros((2,2))
 
-    # X,Y = feed.next_batch()
-    # pred = net.forward(X)
-    # targets = Y
-    # print(pred, targets)
+    X,Y = feed.next_batch()
+    pred = net.forward(X)
+    targets = Y
+    print(pred, targets)
 
-    for i in range(5):
+    '''for i in range(5):
         X,Y = feed.next_batch()
         conf_mat += get_conf_mat(net,X,Y,2)
 
     print(conf_mat)
-    print(np.diagonal(conf_mat).sum()*1./(conf_mat.sum()))
+    print(np.diagonal(conf_mat).sum()*1./(conf_mat.sum()))'''
+
+def get_prob_mask():
+    # Mask for adding probs: 1 at the center, decreasing to 0 at the corners
+    P = np.zeros((127,127))
+    for x in range(127):
+        for y in range(127):
+            P[y,x] = (y-63)**2+(x-63)**2
+    P = (P.max()-P)/(P.max()-P.min())
+    return P
+
+import csv
+def get_ground_truth(super_file):
+    mask = np.zeros((2084,2084))
+    with open(super_file, 'r', encoding="utf8") as f:
+        reader = csv.reader(f, delimiter=',')
+        mitosis_raw = [np.array(row).astype('int') for row in reader]
+        mitosis_coord = [np.vstack([m[::2], m[1::2]]) for m in mitosis_raw]
+        for c in mitosis_coord:
+            mask[c[1],c[0]] = 1
+        return mask
+    return None
+
+def run_complete_test():
+    testdir = 'e:/data/MITOS12/test'
+    patchesdir = os.path.join(testdir, 'patches')
+    clf = './Mitos12_AlexNet_cut4_201701171424_best.ckpt'
+
+    res = 0.2456 #µm/px
+
+    images = [f for f in os.listdir(testdir) if f.find('.bmp') >= 0]
+    
+    batch_size = 196
+    tile_size = (127,127)
+    lr = 1e-3
+    eps = 1.0
+    a = 0.001
+
+    sess = tf.InteractiveSession()
+    net = AlexNet(batch_size, tile_size, sess, lr, eps, a)
+    saver = tf.train.Saver(net.train_vars)
+
+    P = get_prob_mask()
+    # thresh = 0.91 # Threshold determined from the training set
+    saver.restore(sess, clf)
+    print(images)
+
+    for imfile in images:
+        if( imfile == 'A00_00.bmp' ): continue
+        print(imfile)
+        patches = [f for f in os.listdir(patchesdir) if f.find(imfile) >= 0]
+        classes = np.zeros((2084,2084,2)) # channels : max(class0), max(class1)
+        csv = os.path.join(testdir, imfile.replace('bmp','csv'))
+        GT = get_ground_truth(csv)
+        for p in patches:
+            y = int(p[11:15])*10
+            patch = np.load(os.path.join(patchesdir,p)).astype('float')-127
+            
+            Y = net.forward(patch)
+            for x in range(196):
+                classes[y:y+127,x*10:(x*10)+127,0] = np.maximum(classes[y:y+127,x*10:(x*10)+127,0],Y[x,0]*P)
+                classes[y:y+127,x*10:(x*10)+127,1] = np.maximum(classes[y:y+127,x*10:(x*10)+127,1],Y[x,1]*P)
+
+            print(int(p[11:15]),'/',195)
+
+        np.save('%s.%s.npy'%(clf,imfile), classes)
+        #M = classes[:,:,1]>=thresh
+        #true_centroids = [r.centroid for r in regionprops(label(GT))]
+        #clf_centroids = [r.centroid for r in regionprops(label(M))]
+
+
 
 def test_image():
-    imfile = 'A00_00.bmp'
     patchesdir = 'e:/data/MITOS12/test/patches'
+    imfile = 'A00_00.bmp'
     imsdir = 'e:/data/MITOS12/test/'
-    clf = './Mitos12_AlexNet_cut4_201701051734_best.ckpt'
+    clf = './Mitos12_AlexNet_cut4_201701171424_best.ckpt'
 
     im = plt.imread(os.path.join(imsdir,imfile))
     classes = np.zeros(im.shape) # channels : max(class0), max(class1)
@@ -241,11 +312,7 @@ def test_image():
     saver = tf.train.Saver(net.train_vars)
 
     # Mask for adding probs: 1 at the center, decreasing to 0 at the corners
-    P = np.zeros((127,127))
-    for x in range(127):
-        for y in range(127):
-            P[y,x] = (y-63)**2+(x-63)**2
-    P = (P.max()-P)/(P.max()-P.min())
+    P = get_prob_mask()
 
     saver.restore(sess, clf)
 
@@ -299,6 +366,7 @@ def test_image():
     # print("Done.")
 
 if __name__ == "__main__":
-    # train()
+    train()
     # test()
-    test_image()
+    # test_image()
+    # run_complete_test()
