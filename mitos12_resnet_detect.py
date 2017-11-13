@@ -11,36 +11,7 @@ from datetime import datetime
 # from MITOS12Feed import MITOS12Feed
 
 '''
-mitos12_resnet_13_from_sd
-    # Widen the network
-    net = tf.contrib.layers.conv2d(X, 128, 1, 1, activation_fn=tf.nn.relu, weights_initializer=tf.contrib.layers.xavier_initializer(), weights_regularizer=tf.nn.l2_loss, biases_initializer=tf.contrib.layers.xavier_initializer(), scope='widen')
-
-    res1 = add_residual(net, 'res1')
-    res2 = add_residual(res1, 'res2')
-    res3 = add_residual(res2, 'res3')
-    res4 = add_residual(res3, 'res4', False)
-
-    up1 = add_up(res4, 'up1')
-
-    res5 = add_residual(up1, 'res5', False)
-    res6 = add_residual(res5, 'res6', False)
-    res7 = add_residual(res6, 'res7', False)
-    
-    up2 = add_up(res7, 'up2')
-
-    res8 = add_residual(up2, 'res8', False)
-    res9 = add_residual(res8, 'res9', False)
-    res10 = add_residual(res9, 'res10', False)
-
-    up3 = add_up(res10, 'up3')
-
-    res11 = add_residual(up3, 'res11', False)
-    res12 = add_residual(res11, 'res12', False)
-    res13 = add_residual(res12, 'res13', False)
-
-    net = add_seg(res13, 'seg')
-
-mitos12_resnet_7_softmax_logits
+mitos12_resnet_detect6
     # Widen the network
     net1 = tf.contrib.layers.conv2d(X, 256, 1, 1, activation_fn=tf.nn.relu, weights_initializer=tf.contrib.layers.xavier_initializer(), weights_regularizer=tf.nn.l2_loss, biases_initializer=tf.contrib.layers.xavier_initializer(), scope='widen')
 
@@ -59,66 +30,18 @@ mitos12_resnet_7_softmax_logits
     net3mp = tf.contrib.layers.max_pool2d(net3, 3, 2, 'SAME', scope='res2/mp')
     
     # Residual unit 3
-    net4a = tf.contrib.layers.conv2d(net3mp, 128, 3, 1, activation_fn=tf.nn.relu, weights_initializer=tf.contrib.layers.xavier_initializer(), weights_regularizer=tf.nn.l2_loss, biases_initializer=tf.contrib.layers.xavier_initializer(), scope='res3/1')
+    net4a = tf.contrib.layers.conv2d(net3mp, 128, 3, 1, activation_fn=tf.nn.relu,  weights_initializer=tf.contrib.layers.xavier_initializer(), weights_regularizer=tf.nn.l2_loss, biases_initializer=tf.contrib.layers.xavier_initializer(), scope='res3/1')
     net4b = tf.contrib.layers.conv2d(net4a, 128, 3, 1, activation_fn=tf.nn.relu, weights_initializer=tf.contrib.layers.xavier_initializer(), weights_regularizer=tf.nn.l2_loss, biases_initializer=tf.contrib.layers.xavier_initializer(), scope='res3/2')
     net4c = tf.contrib.layers.conv2d(net4b, 256, 3, 1, activation_fn=tf.nn.relu, weights_initializer=tf.contrib.layers.xavier_initializer(), weights_regularizer=tf.nn.l2_loss, biases_initializer=tf.contrib.layers.xavier_initializer(), scope='res3/3')
     net4 = tf.add(net3mp, net4c, name='res3/add')
     net4mp = tf.contrib.layers.max_pool2d(net4, 3, 2, 'SAME', scope='res3/mp')
     
-    up1 = tf.contrib.layers.conv2d_transpose(net4mp, 256, 3, 2, 'SAME', activation_fn=tf.nn.relu, weights_initializer=tf.contrib.layers.xavier_initializer(), weights_regularizer=tf.nn.l2_loss, biases_initializer=tf.contrib.layers.xavier_initializer(), scope='up1')
-    
-    # Residual unit 4
-    net5a = tf.contrib.layers.conv2d(up1, 128, 3, 1, activation_fn=tf.nn.relu, weights_initializer=tf.contrib.layers.xavier_initializer(), weights_regularizer=tf.nn.l2_loss, biases_initializer=tf.contrib.layers.xavier_initializer(), scope='res4/1')
-    net5b = tf.contrib.layers.conv2d(net5a, 128, 3, 1, activation_fn=tf.nn.relu, weights_initializer=tf.contrib.layers.xavier_initializer(), weights_regularizer=tf.nn.l2_loss, biases_initializer=tf.contrib.layers.xavier_initializer(), scope='res4/2')
-    net5c = tf.contrib.layers.conv2d(net5b, 256, 3, 1, activation_fn=tf.nn.relu, weights_initializer=tf.contrib.layers.xavier_initializer(), weights_regularizer=tf.nn.l2_loss, biases_initializer=tf.contrib.layers.xavier_initializer(), scope='res4/3')
-    net5 = tf.add(up1, net5c, name='res4/add')
-    
-    up2 = tf.contrib.layers.conv2d_transpose(net5, 256, 3, 2, 'SAME', activation_fn=tf.nn.relu, weights_initializer=tf.contrib.layers.xavier_initializer(), weights_regularizer=tf.nn.l2_loss, biases_initializer=tf.contrib.layers.xavier_initializer(), scope='up2')
-    
-    # Residual unit 5
-    net6a = tf.contrib.layers.conv2d(up2, 128, 3, 1, activation_fn=tf.nn.relu, weights_initializer=tf.contrib.layers.xavier_initializer(), weights_regularizer=tf.nn.l2_loss, biases_initializer=tf.contrib.layers.xavier_initializer(), scope='res5/1')
-    net6b = tf.contrib.layers.conv2d(net6a, 128, 3, 1, activation_fn=tf.nn.relu, weights_initializer=tf.contrib.layers.xavier_initializer(), weights_regularizer=tf.nn.l2_loss, biases_initializer=tf.contrib.layers.xavier_initializer(), scope='res5/2')
-    net6c = tf.contrib.layers.conv2d(net6b, 256, 3, 1, activation_fn=tf.nn.relu, weights_initializer=tf.contrib.layers.xavier_initializer(), weights_regularizer=tf.nn.l2_loss, biases_initializer=tf.contrib.layers.xavier_initializer(), scope='res5/3')
-    net6 = tf.add(up2, net6c, name='res5/add')
-    
-    up3 = tf.contrib.layers.conv2d_transpose(net6, 256, 3, 2, 'SAME', activation_fn=tf.nn.relu, weights_initializer=tf.contrib.layers.xavier_initializer(), weights_regularizer=tf.nn.l2_loss, biases_initializer=tf.contrib.layers.xavier_initializer(), scope='up3')
-    
-    net7 = tf.contrib.layers.conv2d(up3, 64, 3, 1, activation_fn=tf.nn.relu, weights_initializer=tf.contrib.layers.xavier_initializer(), weights_regularizer=tf.nn.l2_loss, biases_initializer=tf.contrib.layers.xavier_initializer(), scope='seg1')
-    net = tf.contrib.layers.conv2d(net7, 2, 1, 1, activation_fn=tf.nn.relu, weights_initializer=tf.contrib.layers.xavier_initializer(), weights_regularizer=tf.nn.l2_loss, biases_initializer=tf.contrib.layers.xavier_initializer(), scope='seg')
+    reshape = tf.reshape(net4mp, [batch_size, int(np.prod(net4mp.get_shape()[1:]))], name="reshape")
 
-    return [net]
+    # Fully connected layers
+    fc5 = tf.contrib.layers.fully_connected(reshape, 64, activation_fn=tf.nn.relu, weights_initializer=tf.contrib.layers.xavier_initializer(), weights_regularizer=tf.nn.l2_loss, biases_initializer=tf.zeros_initializer(), scope='fc5')
+    net = tf.contrib.layers.fully_connected(fc5, 2, activation_fn=tf.nn.relu, weights_initializer=tf.contrib.layers.xavier_initializer(), weights_regularizer=tf.nn.l2_loss, biases_initializer=tf.zeros_initializer(), scope='fc6')
 
-mitos12_resnet_shortlong
-    # Widen the network
-    widen1 = tf.contrib.layers.conv2d(X, 32, 3, 1, activation_fn=tf.nn.relu, weights_initializer=tf.contrib.layers.xavier_initializer(), weights_regularizer=tf.nn.l2_loss, biases_initializer=tf.contrib.layers.xavier_initializer(), scope='widen/1')
-    widen2 = tf.contrib.layers.conv2d(widen1, 64, 3, 1, activation_fn=tf.nn.relu, weights_initializer=tf.contrib.layers.xavier_initializer(), weights_regularizer=tf.nn.l2_loss, biases_initializer=tf.contrib.layers.xavier_initializer(), scope='widen/2')
-    widen3 = tf.contrib.layers.conv2d(widen2, 256, 3, 1, activation_fn=tf.nn.relu, weights_initializer=tf.contrib.layers.xavier_initializer(), weights_regularizer=tf.nn.l2_loss, biases_initializer=tf.contrib.layers.xavier_initializer(), scope='widen/3')
-
-    # Long way
-    long_res1 = add_residual(widen3, 'long_res1', True, 128)
-    long_res2 = add_residual(long_res1, 'long_res2', True, 128)
-    long_res3 = add_residual(long_res2, 'long_res3', True, 128)
-    long_up1 = add_up(long_res3, 'long_up1', 128)
-    long_res4 = add_residual(long_up1, 'long_res4', False, 128)
-    long_up2 = add_up(long_res4, 'long_up2', 128)
-    long_up3 = add_up(long_up2, 'long_up3', 128)
-    long_res5 = add_residual(long_up3, 'long_res5', False, 64)
-
-    # Short way
-    short_res1 = add_residual(widen3, 'short_res1', False, 128)
-    short_res2 = add_residual(short_res1, 'short_res2', False, 128)
-    short_res3 = add_residual(short_res2, 'short_res3', False, 128)
-
-    # Concatenation
-    concat_short_long = tf.concat([long_res5, short_res3], 3, name='concat_short_long')
-
-    # Ending
-    end_res = add_residual(concat_short_long, 'end_res', False, 64)
-
-    # Segmentation
-    seg1 = tf.contrib.layers.conv2d(end_res, 64, 3, 1, activation_fn=tf.nn.relu, weights_initializer=tf.contrib.layers.xavier_initializer(), weights_regularizer=tf.nn.l2_loss, biases_initializer=tf.contrib.layers.xavier_initializer(), scope='seg/1')
-    net = tf.contrib.layers.conv2d(seg1, 2, 1, 1, activation_fn=tf.nn.relu, weights_initializer=tf.contrib.layers.xavier_initializer(), weights_regularizer=tf.nn.l2_loss, biases_initializer=tf.contrib.layers.xavier_initializer(), scope='seg/2')
-    
     return [net]
 '''
 
@@ -170,44 +93,46 @@ def get_network(X, kp):
     channels = X.get_shape()[3]
 
     # Widen the network
-    widen1 = tf.contrib.layers.conv2d(X, 32, 3, 1, activation_fn=tf.nn.relu, weights_initializer=tf.contrib.layers.xavier_initializer(), weights_regularizer=tf.nn.l2_loss, biases_initializer=tf.contrib.layers.xavier_initializer(), scope='widen/1')
-    widen2 = tf.contrib.layers.conv2d(widen1, 64, 3, 1, activation_fn=tf.nn.relu, weights_initializer=tf.contrib.layers.xavier_initializer(), weights_regularizer=tf.nn.l2_loss, biases_initializer=tf.contrib.layers.xavier_initializer(), scope='widen/2')
-    widen3 = tf.contrib.layers.conv2d(widen2, 256, 3, 1, activation_fn=tf.nn.relu, weights_initializer=tf.contrib.layers.xavier_initializer(), weights_regularizer=tf.nn.l2_loss, biases_initializer=tf.contrib.layers.xavier_initializer(), scope='widen/3')
+    net1 = tf.contrib.layers.conv2d(X, 256, 1, 1, activation_fn=tf.nn.relu, weights_initializer=tf.contrib.layers.xavier_initializer(), weights_regularizer=tf.nn.l2_loss, biases_initializer=tf.contrib.layers.xavier_initializer(), scope='widen')
 
-    # Long way
-    long_res1 = add_residual(widen3, 'long_res1', True, 128)
-    long_res2 = add_residual(long_res1, 'long_res2', True, 128)
-    long_res3 = add_residual(long_res2, 'long_res3', True, 128)
-    long_up1 = add_up(long_res3, 'long_up1', 128)
-    long_res4 = add_residual(long_up1, 'long_res4', False, 128)
-    long_up2 = add_up(long_res4, 'long_up2', 128)
-    long_up3 = add_up(long_up2, 'long_up3', 128)
-    long_res5 = add_residual(long_up3, 'long_res5', False, 64)
-
-    # Short way
-    short_res1 = add_residual(widen3, 'short_res1', False, 128)
-    short_res2 = add_residual(short_res1, 'short_res2', False, 128)
-    short_res3 = add_residual(short_res2, 'short_res3', False, 128)
-
-    # Concatenation
-    concat_short_long = tf.concat([long_res5, short_res3], 3, name='concat_short_long')
-
-    # Ending
-    end_res = add_residual(concat_short_long, 'end_res', False, 64)
-
-    # Segmentation
-    seg1 = tf.contrib.layers.conv2d(end_res, 64, 3, 1, activation_fn=tf.nn.relu, weights_initializer=tf.contrib.layers.xavier_initializer(), weights_regularizer=tf.nn.l2_loss, biases_initializer=tf.contrib.layers.xavier_initializer(), scope='seg/1')
-    net = tf.contrib.layers.conv2d(seg1, 2, 1, 1, activation_fn=tf.nn.relu, weights_initializer=tf.contrib.layers.xavier_initializer(), weights_regularizer=tf.nn.l2_loss, biases_initializer=tf.contrib.layers.xavier_initializer(), scope='seg/2')
+    # Residual unit 1
+    net2a = tf.contrib.layers.conv2d(net1, 128, 3, 1, activation_fn=tf.nn.relu, weights_initializer=tf.contrib.layers.xavier_initializer(), weights_regularizer=tf.nn.l2_loss, biases_initializer=tf.contrib.layers.xavier_initializer(), scope='res1/1')
+    net2b = tf.contrib.layers.conv2d(net2a, 128, 3, 1, activation_fn=tf.nn.relu, weights_initializer=tf.contrib.layers.xavier_initializer(), weights_regularizer=tf.nn.l2_loss, biases_initializer=tf.contrib.layers.xavier_initializer(), scope='res1/2')
+    net2c = tf.contrib.layers.conv2d(net2b, 256, 3, 1, activation_fn=tf.nn.relu, weights_initializer=tf.contrib.layers.xavier_initializer(), weights_regularizer=tf.nn.l2_loss, biases_initializer=tf.contrib.layers.xavier_initializer(), scope='res1/3')
+    net2 = tf.add(net1, net2c, name='res1/add')
+    net2mp = tf.contrib.layers.max_pool2d(net2, 3, 2, 'SAME', scope='res1/mp')
     
+    # Residual unit 2
+    net3a = tf.contrib.layers.conv2d(net2mp, 128, 3, 1, activation_fn=tf.nn.relu, weights_initializer=tf.contrib.layers.xavier_initializer(), weights_regularizer=tf.nn.l2_loss, biases_initializer=tf.contrib.layers.xavier_initializer(), scope='res2/1')
+    net3b = tf.contrib.layers.conv2d(net3a, 128, 3, 1, activation_fn=tf.nn.relu, weights_initializer=tf.contrib.layers.xavier_initializer(), weights_regularizer=tf.nn.l2_loss, biases_initializer=tf.contrib.layers.xavier_initializer(), scope='res2/2')
+    net3c = tf.contrib.layers.conv2d(net3b, 256, 3, 1, activation_fn=tf.nn.relu, weights_initializer=tf.contrib.layers.xavier_initializer(), weights_regularizer=tf.nn.l2_loss, biases_initializer=tf.contrib.layers.xavier_initializer(), scope='res2/3')
+    net3 = tf.add(net2mp, net3c, name='res2/add')
+    net3mp = tf.contrib.layers.max_pool2d(net3, 3, 2, 'SAME', scope='res2/mp')
+    
+    # Residual unit 3
+    net4a = tf.contrib.layers.conv2d(net3mp, 128, 3, 1, activation_fn=tf.nn.relu,  weights_initializer=tf.contrib.layers.xavier_initializer(), weights_regularizer=tf.nn.l2_loss, biases_initializer=tf.contrib.layers.xavier_initializer(), scope='res3/1')
+    net4b = tf.contrib.layers.conv2d(net4a, 128, 3, 1, activation_fn=tf.nn.relu, weights_initializer=tf.contrib.layers.xavier_initializer(), weights_regularizer=tf.nn.l2_loss, biases_initializer=tf.contrib.layers.xavier_initializer(), scope='res3/2')
+    net4c = tf.contrib.layers.conv2d(net4b, 256, 3, 1, activation_fn=tf.nn.relu, weights_initializer=tf.contrib.layers.xavier_initializer(), weights_regularizer=tf.nn.l2_loss, biases_initializer=tf.contrib.layers.xavier_initializer(), scope='res3/3')
+    net4 = tf.add(net3mp, net4c, name='res3/add')
+    net4mp = tf.contrib.layers.max_pool2d(net4, 3, 2, 'SAME', scope='res3/mp')
+    
+    flat = tf.reshape(net4mp, [batch_size.value, int(np.prod(net4mp.get_shape()[1:]))], name="reshape")
+
+    # Fully connected layers
+    fc5 = tf.contrib.layers.fully_connected(flat, 64, activation_fn=tf.nn.relu, weights_initializer=tf.contrib.layers.xavier_initializer(), weights_regularizer=tf.nn.l2_loss, biases_initializer=tf.zeros_initializer(), scope='fc5')
+    net = tf.contrib.layers.fully_connected(fc5, 2, activation_fn=tf.nn.softmax, weights_initializer=tf.contrib.layers.xavier_initializer(), weights_regularizer=tf.nn.l2_loss, biases_initializer=tf.zeros_initializer(), scope='fc6')
+
     return [net]
 
+max_mitosis_pixels = 40.
 def transform_batch(X,Y,isTraining):
-    Y2 = np.zeros((Y.shape[0], Y.shape[1], Y.shape[2], 2))
-    Y2[:,:,:,0] = Y
-    Y2[:,:,:,1] = 1-Y
+    p = np.minimum(Y/max_mitosis_pixels,1.) # prob = 1 if at least 40 pixels in the image are mitosis, 0 if 0 pixels, with linear progression in between
+    Y2 = np.zeros((Y.shape[0], 2))
+    Y2[:,0] = p
+    Y2[:,1] = 1-p
 
     if not isTraining:
-        return X,Y2.reshape((Y2.shape[0]*Y2.shape[1]*Y2.shape[2],Y2.shape[3]))
+        return X,Y2
 
     params = np.random.random((X.shape[0], 3))
     params[:,0] = np.floor(params[:,0]*4)
@@ -221,14 +146,12 @@ def transform_batch(X,Y,isTraining):
     do_hswap = (params[:,0]==2)+(params[:,0]==3)
     X2[do_vswap] = X2[do_vswap,::-1,:,:]
     X2[do_hswap] = X2[do_hswap,:,::-1,:]
-    Y2[do_vswap] = Y2[do_vswap,::-1,:,:]
-    Y2[do_hswap] = Y2[do_hswap,:,::-1,:]
 
     # Noise & illumination
     for i in range(X2.shape[0]):
         X2[i] += np.random.random(X2[i].shape)*params[i,1]-params[i,1]/2+params[i,2]
 
-    return X2,Y2.reshape((Y2.shape[0]*Y2.shape[1]*Y2.shape[2],Y2.shape[3]))
+    return X2,Y2
 
 def get_files_from_path(path):
     path_x = os.path.join(path,'tiles')
@@ -271,44 +194,54 @@ def feed(path, seed=0, batch_size=20, isTraining=True):
         np.random.shuffle(idc)
         
         X = batch_x[idc[:batch_size]]
-        Y = batch_y[idc[:batch_size],:,:]
-        yield transform_batch(X,Y,isTraining)
+        #Y = batch_y[idc[:batch_size],:,:].sum(axis=1).sum(axis=1)
+        Y = batch_y[idc[:batch_size],tile_size//2-tile_size//4:tile_size//2+tile_size//4,tile_size//2-tile_size//4:tile_size//2+tile_size//4].sum(axis=1).sum(axis=1)
+        X,Y = transform_batch(X,Y,isTraining)
+        yield X,Y,batch_x[idc[:batch_size]],batch_y[idc[:batch_size],:,:]
 
 imscale = lambda X : (X-X.min())/(X.max()-X.min()) 
 
 def test(saver, batches, net, sess, clf_name, loss, batch_size=20):
-    saver.restore(sess, "e:/data/tf_checkpoint/%s.ckpt"%clf_name)
+    wm = 0
+    nm = 0
+    i = 0
+    epoch = 40
+    for batch in feed(batches, epoch, batch_size, False):
+        if( batch[1][:,0].sum() >= 0 ): nm += 1
+        else: wm += 1
+        i += 1
+        if( i % 100 == 0 ): print(i,wm,nm)
+        if( i > 1000 ): break
+    print(i,wm,nm)
+    '''saver.restore(sess, "e:/data/tf_checkpoint/%s.ckpt"%clf_name)
 
     epoch = 40
     for batch in feed(batches, epoch, batch_size, False):
         t = batch[1].astype('float')
-        if( t.sum() < 50 ): continue
+        if( t[:,0].sum() <= 0 ): continue
         Y = net.eval(session=sess, feed_dict={X: batch[0], target: t})
         #loss = sess.run(loss, feed_dict={X: batch[0], target: t})
         #print(loss, np.sqrt((Y-t)**2).sum()/(batch_size*128*128))
-        t = t.reshape((batch_size,128,128,2))
-        print(t.min(), t.max())
-        print(Y[:,:,:,0].min(), Y[:,:,:,0].max())
+        print(t)
+        print(Y)
         plt.figure()
         for i in range(min(batch_size,10)):
             im = imscale(batch[0][i])
             plt.subplot(2,5,i+1)
             plt.imshow(im)
+            plt.title('Target %d / Prediction %.2f'%(t[i,0], Y[i,0]))
         plt.figure()
         for i in range(min(batch_size,10)):
+            im = imscale(batch[2][i])
             plt.subplot(2,5,i+1)
-            plt.imshow(t[i][:,:,0])
+            plt.imshow(im)
         plt.figure()
         for i in range(min(batch_size,10)):
+            im = imscale(batch[3][i])
             plt.subplot(2,5,i+1)
-            plt.imshow(Y[i][:,:,0])
-            plt.colorbar()
-        plt.figure()
-        for i in range(min(batch_size,10)):
-            plt.subplot(2,5,i+1)
-            plt.imshow(Y[i][:,:,0]>Y[i][:,:,1])
+            plt.imshow(im)
         plt.show()
-        break
+        break'''
 
 def train(saver, batches, net, sess, clf_name, loss, merged, train_writer, restore_from=None, batch_size=20):
     c = 5000
@@ -317,7 +250,7 @@ def train(saver, batches, net, sess, clf_name, loss, merged, train_writer, resto
     print("Start training")
 
     Xval = np.load("E:\\data\\MITOS12\\validation\\tiles\\500.npy")[:batch_size]
-    Yval = np.load("E:\\data\\MITOS12\\validation\\targets\\500.npy")[:batch_size,:,:]
+    Yval = np.load("E:\\data\\MITOS12\\validation\\targets\\500.npy")[:batch_size,:,:].sum(axis=1).sum(axis=1)
     Xval, Yval = transform_batch(Xval, Yval, False)
 
     if restore_from != None:
@@ -333,8 +266,8 @@ def train(saver, batches, net, sess, clf_name, loss, merged, train_writer, resto
                 train_writer.add_summary(summ, i)
                 saver.save(sess, "e:/data/tf_checkpoint/%s.ckpt"%clf_name)
             i += 1
-            if i > 17000: break
-        if i > 17000: break
+            if i > 50000: break
+        if i > 50000: break
 
         # saver.save(sess, "e:/data/tf_checkpoint/%s.ckpt"%clf_name)
 
@@ -412,12 +345,12 @@ if __name__ == "__main__":
         action = sys.argv[1]
         batch_size = 1 if action == 'fulltest' else 20
         im_size = (128,128)
-        lr = 5e-4
+        lr = 1e-4
         eps = 0.1
         a = 1e-5
         kp = 0.5 if action == 'train' else 1.
 
-        clf_name = "mitos12_resnet" if len(sys.argv) <= 2 else sys.argv[2]
+        clf_name = "mitos12_resnet_detect6" if len(sys.argv) <= 2 else sys.argv[2]
         clf_from = None if len(sys.argv) <= 3 else sys.argv[3] 
 
         batches = ["E:\\data\\MITOS12\\train", "E:\\data\\MITOS12\\Hamamatsu\\train"]
@@ -429,7 +362,7 @@ if __name__ == "__main__":
 
         saver = tf.train.Saver()
 
-        target = tf.placeholder(tf.float32, [batch_size*im_size[0]*im_size[1],2])
+        target = tf.placeholder(tf.float32, [batch_size,2])
         loss = tf.reduce_sum(tf.nn.softmax_cross_entropy_with_logits(labels=target, logits=net))
         #loss = tf.losses.mean_squared_error(target, net)
         loss = tf.add_n([loss] + [a*r for r in tf.losses.get_regularization_losses()])
@@ -444,7 +377,7 @@ if __name__ == "__main__":
         sess.run(tf.global_variables_initializer())
 
         tf.get_default_graph().finalize()
-        
+
         if action == 'build':
             print("Built network.")
         elif action == 'train':
